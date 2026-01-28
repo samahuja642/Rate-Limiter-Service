@@ -1,0 +1,22 @@
+{
+  "name": "rate-limiter-service",
+  "version": "1.0.0",
+  "description": "A Redis-backed **distributed rate limiter** implemented using the **Token Bucket algorithm**. This project demonstrates production-grade backend concepts such as request throttling, distributed state management, and middleware-based enforcement.",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "redis": "^5.10.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
+  }
+}

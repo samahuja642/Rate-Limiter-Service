@@ -1,0 +1,282 @@
+📌 Rate Limiter Service — Requirements
+1️⃣ Functional Requirements (MUST HAVE)
+1.1 Request Limiting
+
+The system must limit incoming API requests based on a defined quota.
+
+Default limit: 100 requests per minute.
+
+1.2 Identification Strategy
+
+Requests should be rate-limited by:
+
+IP address (default)
+
+User ID (if provided in headers)
+
+Priority:
+
+If X-User-Id header exists → use User ID
+
+Else → fallback to IP address
+
+1.3 Rate Limiting Algorithm
+
+Use Token Bucket Algorithm.
+
+Each identifier maintains:
+
+Token count
+
+Last refill timestamp
+
+Tokens refill continuously over time.
+
+1.4 Distributed State
+
+Rate limiting state must be stored in Redis.
+
+The system should support multiple API instances sharing the same rate limit state.
+
+1.5 Middleware-Based Enforcement
+
+Rate limiting should be implemented as middleware.
+
+All protected routes must pass through the rate limiter.
+
+1.6 HTTP Responses
+
+Allowed requests:
+
+Proceed normally (200 OK)
+
+Blocked requests:
+
+Respond with 429 Too Many Requests
+
+Response body should include an error message
+
+2️⃣ HTTP Headers (IMPORTANT)
+
+For every response (allowed or blocked):
+
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: <remaining_tokens>
+
+
+For blocked requests only:
+
+Retry-After: <seconds_until_next_token>
+
+3️⃣ Non-Functional Requirements
+3.1 Performance
+
+Rate limiter must handle high concurrency.
+
+Redis operations should be O(1) per request.
+
+3.2 Atomicity & Consistency
+
+Token refill and consumption must be logically atomic.
+
+In a real production setup:
+
+Logic should be moved to a Redis Lua script (documented as future improvement).
+
+3.3 Fault Tolerance
+
+If Redis is unavailable:
+
+Fail open (allow request) OR fail closed (block request).
+
+Chosen strategy must be explicitly documented.
+
+3.4 Configurability
+
+Rate limit values should be configurable via:
+
+Environment variables
+
+Code-level defaults
+
+4️⃣ API Endpoints
+4.1 Protected Endpoint
+GET /api/test
+
+
+Subject to rate limiting
+
+Returns a simple success response
+
+4.2 Health Check
+GET /health
+
+
+Verifies application and Redis connectivity
+
+Not rate-limited
+
+5️⃣ Error Handling
+
+Invalid or missing headers should not break the system.
+
+Redis errors must be:
+
+Logged
+
+Handled gracefully based on fail strategy
+
+6️⃣ Logging & Observability (Nice to Have)
+
+Log blocked requests with:
+
+Identifier
+
+Timestamp
+
+Remaining tokens
+
+Include request latency logging (optional)
+
+7️⃣ Security Considerations
+
+Headers must not be trusted blindly.
+
+User-based rate limiting should be used only after authentication (document assumption).
+
+8️⃣ Documentation Requirements (VERY IMPORTANT)
+
+README must include:
+
+Architecture overview
+
+Rate limiting algorithm explanation
+
+Redis data model
+
+Trade-offs made
+
+Scaling considerations
+
+Future improvements
+
+9️⃣ Out of Scope (Explicitly State This)
+
+Authentication system
+
+UI-heavy frontend
+
+Persistent analytics storage
+
+Multi-region Redis replication
+
+
+Level 1 — Correctness & hygiene (quick wins)
+
+Do these before changing algorithms.
+
+☐ Extract limiter logic from middleware (pure function / class)
+
+☐ Handle window reset cleanly
+
+☐ Prevent race conditions (atomic increments or locking)
+
+☐ Add config (limit, window size)
+
+☐ Return proper 429 responses
+
+Outcome: clean, testable, predictable behavior.
+
+Level 2 — Time & boundary behavior
+
+This is where most bugs live.
+
+☐ Handle exact boundary cases (limit, limit+1)
+
+☐ Decide inclusive vs exclusive limits
+
+☐ Use monotonic time (avoid Date.now() pitfalls)
+
+☐ Test with fake timers
+
+Outcome: you understand why rate limiters misbehave in production.
+
+Level 3 — Algorithm upgrade ⭐
+
+Pick one (don’t do all at once).
+
+Option A: Sliding Window Counter
+
+☐ Weight previous window
+
+☐ Tune accuracy vs cost
+
+Option B: Token Bucket (recommended)
+
+☐ Implement refill logic
+
+☐ Allow controlled bursts
+
+☐ Handle precision issues
+
+Outcome: real-world, interview-relevant knowledge.
+
+Level 4 — Distributed support (Redis)
+
+Only do this after Level 3.
+
+☐ Move counters to Redis
+
+☐ Use atomic operations or Lua
+
+☐ Set TTL correctly
+
+☐ Handle Redis failures (fail-open vs fail-closed)
+
+Outcome: you now understand distributed rate limiting tradeoffs.
+
+Level 5 — API & client experience (often skipped)
+
+Small effort, big signal.
+
+☐ Add response headers:
+
+Retry-After
+
+X-RateLimit-Limit
+
+X-RateLimit-Remaining
+
+☐ Different limits per route / user
+
+☐ Clear error messages
+
+Outcome: production-grade behavior.
+
+Level 6 — Observability & safety
+
+Don’t over-engineer — just basics.
+
+☐ Metrics: allowed vs blocked
+
+☐ Log sampled limit hits
+
+☐ Protect against memory leaks (key cleanup)
+
+☐ Guard against hot keys
+
+Outcome: operational awareness.
+
+Level 7 — Resilience & tuning (advanced, optional)
+
+Only if you want depth.
+
+☐ Graceful degradation
+
+☐ Burst tuning
+
+☐ Soft vs hard limits
+
+☐ Shadow mode (monitor without blocking)
+
+Outcome: senior-level thinking.
